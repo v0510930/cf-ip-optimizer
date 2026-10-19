@@ -1,0 +1,36 @@
+name: refresh-cf-ips
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-cf-ips
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sweep CF edge IPs
+        env:
+          DOMAIN: cf.edge8k.top
+        run: bash refresh.sh
+
+      - name: Commit updated pool
+        run: |
+          git config user.name "cf-ip-bot"
+          git config user.email "cf-ip-bot@users.noreply.github.com"
+          git add all.txt
+          if git diff --cached --quiet; then
+            echo "pool unchanged"
+          else
+            git commit -m "chore: refresh CF IP pool $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            git push
+          fi
